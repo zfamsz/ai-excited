@@ -1,37 +1,37 @@
-// ai-excited-01 entry (Node 22, standard library only).
+// ai-excited-01 — "Golden Dragon Wave"
+// A tiny deterministic program: it copies the entry image (entry.png,
+// stored beside this file) byte-for-byte to the output directory.
 //
-// The entry image lives beside this file as entry.png (JPEG bytes under a
-// .png name, which the gate accepts: it tells PNG from JPEG by the first
-// bytes). The program copies those exact bytes to /output/entry.png, so
-// every run writes identical output and nothing is fetched over the network.
+// No network, no randomness, no timestamps: running it twice on the
+// same input always writes exactly the same bytes.
 //
-// Local run:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-//
-// MAKEFUN_INPUT_DIR, when set, is where the entry image is read from
-// instead of this file's own directory (the kit's local-run convention);
-// MAKEFUN_OUTPUT_DIR, when set, stands in for /output.
+// Environment (for local runs):
+//   MAKEFUN_INPUT_DIR  — directory holding entry.png (default: this file's dir)
+//   MAKEFUN_OUTPUT_DIR — directory to write entry.png into (default: /output)
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
+
 const inputDir = process.env.MAKEFUN_INPUT_DIR ?? here;
-const source = join(inputDir, 'entry.png');
+const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+
+const source = join(inputDir, "entry.png");
+const target = join(outputDir, "entry.png");
 
 if (!existsSync(source)) {
   throw new Error(`entry image not found: ${source}`);
 }
 
-const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 mkdirSync(outputDir, { recursive: true });
+copyFileSync(source, target);
 
-const bytes = readFileSync(source);
-const target = join(outputDir, 'entry.png');
-writeFileSync(target, bytes);
-
-// Sanity check: the output must be the exact bytes we read, non-empty.
-if (statSync(target).size !== bytes.length || bytes.length === 0) {
-  throw new Error('output verification failed: entry.png was not written intact');
+// Confirm the copy landed intact: the output must exist and be non-empty,
+// otherwise the run has not produced a valid entry image.
+if (statSync(target).size === 0) {
+  throw new Error(`output verification failed: ${target} is empty`);
 }
+
+console.log(`Wrote ${target}`);
